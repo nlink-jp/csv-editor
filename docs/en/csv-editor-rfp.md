@@ -109,14 +109,14 @@ A single JSON file at the OS-standard location:
 - macOS: `~/Library/Application Support/csv-editor/config.json`
 - Windows: `%APPDATA%\csv-editor\config.json`
 
-Stored items:
-- Default write encoding
-- Default write line ending
+Stored items (currently only recent files; other entries are future
+extensions):
 - Recent files (10 entries)
-- Window size & position
-- Font
-- Column widths
-- Theme preference (Auto / Light / Dark; default Auto)
+- (future) Default write encoding / line ending
+- (future) Window size & position, font, theme preference
+
+Column widths are session-only (in-memory) for now. Persistence is out of
+scope until concrete demand appears (see Discussion Log §9).
 
 ### External Dependencies
 
@@ -364,6 +364,11 @@ sort, column width, drag-and-drop, and recent files, the user decided to
 
 Both items are recorded in §3 Out of Scope. Revisit if real use cases
 appear.
+
+By the same reasoning, **column-width persistence** (originally listed in
+§2 under stored configuration items) is also deferred. Manual resize and
+auto-fit work within a session; per-file persistence stays out of scope
+until a concrete need surfaces.
 
 ### 8.5 UTF-8-BOM Added to Write Encodings (decided mid Phase 2 chunk B)
 
