@@ -3,7 +3,9 @@ import type { SelectedCell } from './VirtualTable';
 
 interface StatusBarProps {
     file: main.FileLoadResult | null;
+    rows: string[][];
     selected: SelectedCell | null;
+    dirty: boolean;
     supportedEncodings: string[];
     onEncodingChange: (encoding: string) => void;
     onHasHeaderToggle: (hasHeader: boolean) => void;
@@ -11,7 +13,9 @@ interface StatusBarProps {
 
 export function StatusBar({
     file,
+    rows,
     selected,
+    dirty,
     supportedEncodings,
     onEncodingChange,
     onHasHeaderToggle,
@@ -23,7 +27,7 @@ export function StatusBar({
                     <span>
                         R{selected.rowIndex + 1} · C{selected.columnIndex + 1}
                         {' · '}
-                        {(file.rows[selected.rowIndex]?.[selected.columnIndex] ?? '').slice(0, 200) || '∅'}
+                        {(rows[selected.rowIndex]?.[selected.columnIndex] ?? '').slice(0, 200) || '∅'}
                     </span>
                 ) : (
                     <span className="statusbar-muted">
@@ -34,8 +38,13 @@ export function StatusBar({
             <div className="statusbar-right">
                 {file && (
                     <>
+                        {dirty && (
+                            <span className="statusbar-item statusbar-dirty" title="Unsaved changes">
+                                ●
+                            </span>
+                        )}
                         <span className="statusbar-item statusbar-muted">
-                            {file.delimiter === '\t' ? 'TSV' : 'CSV'} · {file.rows.length.toLocaleString()} rows
+                            {file.delimiter === '\t' ? 'TSV' : 'CSV'} · {file.lineEnding} · {rows.length.toLocaleString()} rows
                         </span>
                         <button
                             className="statusbar-item statusbar-toggle"

@@ -43,6 +43,7 @@ type FileLoadResult struct {
 	DetectedEncoding string     `json:"detectedEncoding"`
 	UsedEncoding     string     `json:"usedEncoding"`
 	Delimiter        string     `json:"delimiter"`
+	LineEnding       string     `json:"lineEnding"`
 	HasHeader        bool       `json:"hasHeader"`
 	Header           []string   `json:"header"`
 	Rows             [][]string `json:"rows"`
@@ -52,6 +53,16 @@ type FileLoadResult struct {
 // SupportedReadEncodings exposes the encoding labels the dropdown can show.
 func (b *Bindings) SupportedReadEncodings() []string {
 	encs := encoding.AllReadable()
+	out := make([]string, len(encs))
+	for i, e := range encs {
+		out[i] = string(e)
+	}
+	return out
+}
+
+// SupportedWriteEncodings exposes the encoding labels supported on save.
+func (b *Bindings) SupportedWriteEncodings() []string {
+	encs := encoding.AllWritable()
 	out := make([]string, len(encs))
 	for i, e := range encs {
 		out[i] = string(e)
@@ -95,6 +106,8 @@ func (b *Bindings) LoadFile(path, encodingHint, delimiterHint string, hasHeader 
 		return nil, fmt.Errorf("decode %s: %w", used, err)
 	}
 
+	lineEnding := csvio.DetectLineEnding(text)
+
 	delimiter := ','
 	switch delimiterHint {
 	case "\t":
@@ -124,11 +137,52 @@ func (b *Bindings) LoadFile(path, encodingHint, delimiterHint string, hasHeader 
 		DetectedEncoding: string(detected),
 		UsedEncoding:     string(used),
 		Delimiter:        string(delimiter),
+		LineEnding:       string(lineEnding),
 		HasHeader:        hasHeader,
 		Header:           table.Header,
 		Rows:             table.Rows,
 		MaxColumns:       table.MaxColumns(),
 	}, nil
+}
+
+// SaveFile encodes the table back to path with the given encoding, line
+// ending, and delimiter. UTF-8-BOM is rejected (write encoding is "UTF-8" no
+// BOM per RFP §2). Returns an error on failure; nil on success.
+func (b *Bindings) SaveFile(path, encodingName, lineEnding, delimiter string, hasHeader bool, header []string, rows [][]string) error {
+	delim := ','
+	if delimiter == "\t" {
+		delim = '\t'
+	}
+
+	le := csvio.LineEnding(lineEnding)
+	if le != csvio.CRLF && le != csvio.LF && le != csvio.CR {
+		le = csvio.LF
+	}
+
+	table := &csvio.Table{
+		Header: header,
+		Rows:   rows,
+	}
+
+	text, err := csvio.Encode(table, csvio.EncodeOptions{
+		Delimiter:  delim,
+		LineEnding: le,
+		HasHeader:  hasHeader,
+	})
+	if err != nil {
+		return fmt.Errorf("encode: %w", err)
+	}
+
+	data, err := encoding.Encode(text, encoding.Encoding(encodingName))
+	if err != nil {
+		return fmt.Errorf("transcode to %s: %w", encodingName, err)
+	}
+
+	if err := os.WriteFile(path, data, 0644); err != nil {
+		return fmt.Errorf("write %s: %w", path, err)
+	}
+
+	return nil
 }
 
 // RequestOpenFile is invoked from the native menu. It runs the full flow
@@ -149,4 +203,10 @@ func (b *Bindings) RequestOpenFile() {
 		return
 	}
 	wailsRuntime.EventsEmit(b.ctx, "file:loaded", result)
+}
+
+// RequestSave is invoked from the native File ▸ Save menu. It emits a
+// "menu:save" event for the frontend to handle (frontend owns the row state).
+func (b *Bindings) RequestSave() {
+	wailsRuntime.EventsEmit(b.ctx, "menu:save")
 }

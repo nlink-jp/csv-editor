@@ -1,16 +1,29 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useReducer, useState } from 'react';
 import './App.css';
 import { StatusBar } from './components/StatusBar';
-import { VirtualTable, type SelectedCell } from './components/VirtualTable';
-import { LoadFile, SupportedReadEncodings } from '../wailsjs/go/main/Bindings';
+import {
+    VirtualTable,
+    type EditingCell,
+    type SelectedCell,
+} from './components/VirtualTable';
+import {
+    LoadFile,
+    SaveFile,
+    SupportedReadEncodings,
+} from '../wailsjs/go/main/Bindings';
 import { EventsOn } from '../wailsjs/runtime/runtime';
 import type { main } from '../wailsjs/go/models';
+import { initialState, isDirty, reducer } from './state';
 
 function App() {
-    const [file, setFile] = useState<main.FileLoadResult | null>(null);
+    const [state, dispatch] = useReducer(reducer, initialState);
     const [supportedEncodings, setSupportedEncodings] = useState<string[]>([]);
     const [selected, setSelected] = useState<SelectedCell | null>(null);
+    const [editing, setEditing] = useState<EditingCell | null>(null);
     const [error, setError] = useState<string | null>(null);
+
+    const { file, rows } = state;
+    const dirty = isDirty(state);
 
     useEffect(() => {
         SupportedReadEncodings().then(setSupportedEncodings).catch(() => {});
@@ -18,8 +31,9 @@ function App() {
 
     useEffect(() => {
         const offLoaded = EventsOn('file:loaded', (payload: main.FileLoadResult) => {
-            setFile(payload);
+            dispatch({ type: 'LOAD', payload });
             setSelected(null);
+            setEditing(null);
             setError(null);
         });
         const offError = EventsOn('file:error', (message: string) => {
@@ -31,13 +45,40 @@ function App() {
         };
     }, []);
 
+    const handleSave = useCallback(async () => {
+        if (!file) return;
+        try {
+            await SaveFile(
+                file.path,
+                file.usedEncoding,
+                file.lineEnding,
+                file.delimiter,
+                file.hasHeader,
+                file.hasHeader ? file.header : [],
+                rows,
+            );
+            dispatch({ type: 'SAVED' });
+            setError(null);
+        } catch (e) {
+            setError(String(e));
+        }
+    }, [file, rows]);
+
+    useEffect(() => {
+        const off = EventsOn('menu:save', () => {
+            handleSave();
+        });
+        return () => off();
+    }, [handleSave]);
+
     const handleEncodingChange = useCallback(
         async (encoding: string) => {
             if (!file) return;
             try {
                 const result = await LoadFile(file.path, encoding, file.delimiter, file.hasHeader);
-                setFile(result);
+                dispatch({ type: 'LOAD', payload: result });
                 setSelected(null);
+                setEditing(null);
                 setError(null);
             } catch (e) {
                 setError(String(e));
@@ -51,8 +92,9 @@ function App() {
             if (!file) return;
             try {
                 const result = await LoadFile(file.path, file.usedEncoding, file.delimiter, hasHeader);
-                setFile(result);
+                dispatch({ type: 'LOAD', payload: result });
                 setSelected(null);
+                setEditing(null);
                 setError(null);
             } catch (e) {
                 setError(String(e));
@@ -60,6 +102,32 @@ function App() {
         },
         [file],
     );
+
+    const handleStartEdit = useCallback((cell: EditingCell) => {
+        setEditing(cell);
+    }, []);
+
+    const handleCommitEdit = useCallback(
+        (value: string) => {
+            if (editing) {
+                dispatch({
+                    type: 'EDIT_CELL',
+                    rowIndex: editing.rowIndex,
+                    columnIndex: editing.columnIndex,
+                    value,
+                });
+            }
+            setEditing(null);
+        },
+        [editing],
+    );
+
+    const handleCancelEdit = useCallback(() => {
+        setEditing(null);
+    }, []);
+
+    const handleUndo = useCallback(() => dispatch({ type: 'UNDO' }), []);
+    const handleRedo = useCallback(() => dispatch({ type: 'REDO' }), []);
 
     return (
         <div id="App">
@@ -71,10 +139,16 @@ function App() {
             {file ? (
                 <VirtualTable
                     header={file.hasHeader ? file.header : null}
-                    rows={file.rows}
+                    rows={rows}
                     maxColumns={file.maxColumns}
                     selected={selected}
                     onSelect={setSelected}
+                    editing={editing}
+                    onStartEdit={handleStartEdit}
+                    onCommitEdit={handleCommitEdit}
+                    onCancelEdit={handleCancelEdit}
+                    onUndo={handleUndo}
+                    onRedo={handleRedo}
                 />
             ) : (
                 <main className="placeholder">
@@ -87,7 +161,9 @@ function App() {
             )}
             <StatusBar
                 file={file}
+                rows={rows}
                 selected={selected}
+                dirty={dirty}
                 supportedEncodings={supportedEncodings}
                 onEncodingChange={handleEncodingChange}
                 onHasHeaderToggle={handleHasHeaderToggle}

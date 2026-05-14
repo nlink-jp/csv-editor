@@ -6,10 +6,16 @@ import {
     type ColumnDef,
 } from '@tanstack/react-table';
 import { useVirtualizer } from '@tanstack/react-virtual';
+import { CellEditor } from './CellEditor';
 
 type Row = string[];
 
 export interface SelectedCell {
+    rowIndex: number;
+    columnIndex: number;
+}
+
+export interface EditingCell {
     rowIndex: number;
     columnIndex: number;
 }
@@ -20,6 +26,12 @@ interface VirtualTableProps {
     maxColumns: number;
     selected: SelectedCell | null;
     onSelect: (cell: SelectedCell) => void;
+    editing: EditingCell | null;
+    onStartEdit: (cell: EditingCell) => void;
+    onCommitEdit: (value: string) => void;
+    onCancelEdit: () => void;
+    onUndo: () => void;
+    onRedo: () => void;
 }
 
 const ROW_NUMBER_WIDTH = 64;
@@ -33,6 +45,12 @@ export function VirtualTable({
     maxColumns,
     selected,
     onSelect,
+    editing,
+    onStartEdit,
+    onCommitEdit,
+    onCancelEdit,
+    onUndo,
+    onRedo,
 }: VirtualTableProps) {
     const columns = useMemo<ColumnDef<Row>[]>(() => {
         const cols: ColumnDef<Row>[] = [];
@@ -109,7 +127,33 @@ export function VirtualTable({
 
     const handleKeyDown = useCallback(
         (e: React.KeyboardEvent<HTMLDivElement>) => {
+            if (editing) return;
             if (rows.length === 0 || maxColumns === 0) return;
+
+            const cmdOrCtrl = e.metaKey || e.ctrlKey;
+
+            // Undo / Redo (Cmd+Z / Cmd+Shift+Z / Cmd+Y).
+            if (cmdOrCtrl && e.key.toLowerCase() === 'z' && !e.shiftKey) {
+                e.preventDefault();
+                onUndo();
+                return;
+            }
+            if (
+                cmdOrCtrl &&
+                ((e.key.toLowerCase() === 'z' && e.shiftKey) ||
+                    e.key.toLowerCase() === 'y')
+            ) {
+                e.preventDefault();
+                onRedo();
+                return;
+            }
+
+            // Enter / F2 start cell edit on the current selection.
+            if ((e.key === 'Enter' || e.key === 'F2') && selected) {
+                e.preventDefault();
+                onStartEdit(selected);
+                return;
+            }
 
             const navKeys = [
                 'ArrowUp',
@@ -123,14 +167,12 @@ export function VirtualTable({
             ];
             if (!navKeys.includes(e.key)) return;
 
-            // No selection yet: any nav key starts at (0, 0).
             if (selected == null) {
                 e.preventDefault();
                 moveSelection(0, 0);
                 return;
             }
 
-            const cmdOrCtrl = e.metaKey || e.ctrlKey;
             const pageSize = Math.max(
                 1,
                 Math.floor(((scrollRef.current?.clientHeight ?? 0) - HEAD_HEIGHT) / ROW_HEIGHT) - 1,
@@ -169,11 +211,15 @@ export function VirtualTable({
             e.preventDefault();
             moveSelection(r, c);
         },
-        [rows.length, maxColumns, selected, moveSelection],
+        [rows.length, maxColumns, selected, editing, moveSelection, onStartEdit, onUndo, onRedo],
     );
 
-    // Focus the table when data changes so keyboard navigation works without
-    // an explicit click. preventScroll keeps the page from jumping.
+    useEffect(() => {
+        if (!editing) {
+            scrollRef.current?.focus({ preventScroll: true });
+        }
+    }, [editing]);
+
     useEffect(() => {
         scrollRef.current?.focus({ preventScroll: true });
     }, [rows]);
@@ -225,15 +271,21 @@ export function VirtualTable({
                                     !isRowNum &&
                                     selected?.rowIndex === v.index &&
                                     selected?.columnIndex === dataColIdx;
+                                const isEditing =
+                                    !isRowNum &&
+                                    editing?.rowIndex === v.index &&
+                                    editing?.columnIndex === dataColIdx;
                                 const className =
                                     'vt-cell' +
                                     (isRowNum ? ' vt-cell-rownum' : '') +
-                                    (isSelected ? ' vt-cell-selected' : '');
+                                    (isSelected ? ' vt-cell-selected' : '') +
+                                    (isEditing ? ' vt-cell-editing' : '');
+                                const cellWidth = cell.column.getSize();
                                 return (
                                     <div
                                         key={cell.id}
                                         className={className}
-                                        style={{ width: cell.column.getSize() }}
+                                        style={{ width: cellWidth }}
                                         onClick={
                                             isRowNum
                                                 ? undefined
@@ -245,8 +297,28 @@ export function VirtualTable({
                                                       });
                                                   }
                                         }
+                                        onDoubleClick={
+                                            isRowNum
+                                                ? undefined
+                                                : () => {
+                                                      onStartEdit({
+                                                          rowIndex: v.index,
+                                                          columnIndex: dataColIdx,
+                                                      });
+                                                  }
+                                        }
                                     >
-                                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                        {isEditing ? (
+                                            <CellEditor
+                                                initialValue={rows[v.index]?.[dataColIdx] ?? ''}
+                                                width={cellWidth}
+                                                height={ROW_HEIGHT}
+                                                onCommit={onCommitEdit}
+                                                onCancel={onCancelEdit}
+                                            />
+                                        ) : (
+                                            flexRender(cell.column.columnDef.cell, cell.getContext())
+                                        )}
                                     </div>
                                 );
                             })}

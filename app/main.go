@@ -54,6 +54,9 @@ func buildMenu(b *Bindings) *menu.Menu {
 	fileMenu.AddText("Open...", keys.CmdOrCtrl("o"), func(_ *menu.CallbackData) {
 		b.RequestOpenFile()
 	})
+	fileMenu.AddText("Save", keys.CmdOrCtrl("s"), func(_ *menu.CallbackData) {
+		b.RequestSave()
+	})
 
 	if goruntime.GOOS != "darwin" {
 		fileMenu.AddSeparator()
