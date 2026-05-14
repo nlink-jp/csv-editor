@@ -6,17 +6,24 @@
 const QUOTE_NEEDED = /[\t\n\r"]/;
 
 export function encodeTSV(rows: string[][]): string {
-    return rows
-        .map((row) =>
-            row
-                .map((cell) =>
-                    QUOTE_NEEDED.test(cell)
-                        ? '"' + cell.replace(/"/g, '""') + '"'
-                        : cell,
-                )
-                .join('\t'),
-        )
-        .join('\n');
+    if (rows.length === 0) return '';
+    // Each row is terminated (not separated) by '\n', matching the
+    // RFC 4180 / Go encoding/csv convention. This preserves trailing empty
+    // rows on round-trip (Array.join would drop them by emitting only
+    // N-1 separators for N elements).
+    return (
+        rows
+            .map((row) =>
+                row
+                    .map((cell) =>
+                        QUOTE_NEEDED.test(cell)
+                            ? '"' + cell.replace(/"/g, '""') + '"'
+                            : cell,
+                    )
+                    .join('\t'),
+            )
+            .join('\n') + '\n'
+    );
 }
 
 // decodeTSV parses TSV text into a 2-D array. Honors quoted fields with

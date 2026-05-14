@@ -51,9 +51,13 @@ func buildMenu(b *Bindings) *menu.Menu {
 	}
 
 	fileMenu := appMenu.AddSubmenu("File")
+	fileMenu.AddText("New", keys.CmdOrCtrl("n"), func(_ *menu.CallbackData) {
+		b.RequestNewFile()
+	})
 	fileMenu.AddText("Open...", keys.CmdOrCtrl("o"), func(_ *menu.CallbackData) {
 		b.RequestOpenFile()
 	})
+	fileMenu.AddSeparator()
 	fileMenu.AddText("Save", keys.CmdOrCtrl("s"), func(_ *menu.CallbackData) {
 		b.RequestSave()
 	})

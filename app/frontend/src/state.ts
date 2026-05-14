@@ -18,6 +18,10 @@ export interface HistoryEntry {
     rowsAfter: string[][];
     headerBefore: string[] | null;
     headerAfter: string[] | null;
+    // Set only when the action toggled hasHeader (SET_HAS_HEADER); used by
+    // UNDO/REDO to restore the flag along with the data.
+    hasHeaderBefore?: boolean;
+    hasHeaderAfter?: boolean;
 }
 
 export interface EditableState {
@@ -50,13 +54,17 @@ export interface Rect {
 export type Action =
     | { type: 'LOAD'; payload: main.FileLoadResult }
     | { type: 'APPLY_EDITS'; edits: PendingEdit[] }
+    | { type: 'RENAME_COLUMN'; columnIndex: number; value: string }
     | { type: 'CLEAR_CELLS'; rect: Rect }
     | { type: 'INSERT_ROWS'; atIndex: number; count: number }
     | { type: 'DELETE_ROWS'; startIndex: number; count: number }
     | { type: 'DUPLICATE_ROWS'; startIndex: number; count: number }
+    | { type: 'MOVE_ROWS'; startIndex: number; count: number; direction: 'up' | 'down' }
     | { type: 'INSERT_COLS'; atIndex: number; count: number }
     | { type: 'DELETE_COLS'; startIndex: number; count: number }
     | { type: 'DUPLICATE_COLS'; startIndex: number; count: number }
+    | { type: 'MOVE_COLS'; startIndex: number; count: number; direction: 'left' | 'right' }
+    | { type: 'SET_HAS_HEADER'; value: boolean }
     | { type: 'UNDO' }
     | { type: 'REDO' }
     | { type: 'SAVED' }
@@ -192,6 +200,34 @@ export function reducer(state: EditableState, action: Action): EditableState {
             return pushHistory(state, rowsAfter, state.file.header);
         }
 
+        case 'MOVE_ROWS': {
+            if (!state.file) return state;
+            const { startIndex, count, direction } = action;
+            if (count <= 0) return state;
+            const end = startIndex + count;
+            if (startIndex < 0 || end > state.rows.length) return state;
+            if (direction === 'up' && startIndex === 0) return state;
+            if (direction === 'down' && end === state.rows.length) return state;
+            const moving = state.rows.slice(startIndex, end);
+            let rowsAfter: string[][];
+            if (direction === 'up') {
+                rowsAfter = [
+                    ...state.rows.slice(0, startIndex - 1),
+                    ...moving,
+                    state.rows[startIndex - 1],
+                    ...state.rows.slice(end),
+                ];
+            } else {
+                rowsAfter = [
+                    ...state.rows.slice(0, startIndex),
+                    state.rows[end],
+                    ...moving,
+                    ...state.rows.slice(end + 1),
+                ];
+            }
+            return pushHistory(state, rowsAfter, state.file.header);
+        }
+
         case 'INSERT_COLS': {
             if (!state.file) return state;
             const { atIndex, count } = action;
@@ -262,17 +298,115 @@ export function reducer(state: EditableState, action: Action): EditableState {
             return pushHistory(state, rowsAfter, headerAfter);
         }
 
+        case 'MOVE_COLS': {
+            if (!state.file) return state;
+            const { startIndex, count, direction } = action;
+            if (count <= 0) return state;
+            const end = startIndex + count;
+            if (direction === 'left' && startIndex === 0) return state;
+            const headerLen = state.file.header?.length ?? 0;
+            let maxCols = headerLen;
+            for (const r of state.rows) if (r.length > maxCols) maxCols = r.length;
+            if (direction === 'right' && end >= maxCols) return state;
+
+            const order: number[] = [];
+            if (direction === 'left') {
+                for (let i = 0; i < startIndex - 1; i++) order.push(i);
+                for (let i = startIndex; i < end; i++) order.push(i);
+                order.push(startIndex - 1);
+                for (let i = end; i < maxCols; i++) order.push(i);
+            } else {
+                for (let i = 0; i < startIndex; i++) order.push(i);
+                order.push(end);
+                for (let i = startIndex; i < end; i++) order.push(i);
+                for (let i = end + 1; i < maxCols; i++) order.push(i);
+            }
+            const reorder = (row: string[]) => order.map((i) => row[i] ?? '');
+            const rowsAfter = state.rows.map(reorder);
+            let headerAfter = state.file.header;
+            if (state.file.hasHeader && state.file.header) {
+                headerAfter = reorder(state.file.header);
+            }
+            return pushHistory(state, rowsAfter, headerAfter);
+        }
+
+        case 'RENAME_COLUMN': {
+            if (!state.file || !state.file.hasHeader) return state;
+            const { columnIndex, value } = action;
+            const current = state.file.header ?? [];
+            const before = current[columnIndex] ?? '';
+            if (before === value && columnIndex < current.length) return state;
+            const newHeader = current.slice();
+            while (newHeader.length <= columnIndex) newHeader.push('');
+            newHeader[columnIndex] = value;
+            return pushHistory(state, state.rows, newHeader);
+        }
+
+        case 'SET_HAS_HEADER': {
+            if (!state.file) return state;
+            const newValue = action.value;
+            if (newValue === state.file.hasHeader) return state;
+
+            let newRows = state.rows;
+            let newHeader: string[] = state.file.header ?? [];
+
+            if (newValue && !state.file.hasHeader) {
+                // Off → On: promote the first data row to be the header.
+                if (state.rows.length > 0) {
+                    newHeader = state.rows[0].slice();
+                    newRows = state.rows.slice(1);
+                } else {
+                    newHeader = [];
+                }
+            } else if (!newValue && state.file.hasHeader) {
+                // On → Off: demote the header back into the data rows.
+                if (state.file.header && state.file.header.length > 0) {
+                    newRows = [state.file.header.slice(), ...state.rows];
+                }
+                newHeader = [];
+            }
+
+            return {
+                ...state,
+                rows: newRows,
+                file: {
+                    ...state.file,
+                    hasHeader: newValue,
+                    header: newHeader,
+                },
+                history: [
+                    ...state.history,
+                    {
+                        rowsBefore: state.rows,
+                        rowsAfter: newRows,
+                        headerBefore: state.file.header,
+                        headerAfter: newHeader,
+                        hasHeaderBefore: state.file.hasHeader,
+                        hasHeaderAfter: newValue,
+                    },
+                ],
+                future: [],
+            };
+        }
+
         case 'UNDO': {
             if (state.history.length === 0) return state;
             const entry = state.history[state.history.length - 1];
             const headerChanged = entry.headerBefore !== entry.headerAfter;
+            const hasHeaderChanged =
+                entry.hasHeaderBefore !== undefined &&
+                entry.hasHeaderAfter !== undefined &&
+                entry.hasHeaderBefore !== entry.hasHeaderAfter;
+            let newFile = state.file;
+            if (state.file && (headerChanged || hasHeaderChanged)) {
+                newFile = { ...state.file };
+                if (headerChanged) newFile.header = entry.headerBefore ?? [];
+                if (hasHeaderChanged) newFile.hasHeader = entry.hasHeaderBefore!;
+            }
             return {
                 ...state,
                 rows: entry.rowsBefore,
-                file:
-                    state.file && headerChanged
-                        ? { ...state.file, header: entry.headerBefore ?? [] }
-                        : state.file,
+                file: newFile,
                 history: state.history.slice(0, -1),
                 future: [...state.future, entry],
             };
@@ -282,13 +416,20 @@ export function reducer(state: EditableState, action: Action): EditableState {
             if (state.future.length === 0) return state;
             const entry = state.future[state.future.length - 1];
             const headerChanged = entry.headerBefore !== entry.headerAfter;
+            const hasHeaderChanged =
+                entry.hasHeaderBefore !== undefined &&
+                entry.hasHeaderAfter !== undefined &&
+                entry.hasHeaderBefore !== entry.hasHeaderAfter;
+            let newFile = state.file;
+            if (state.file && (headerChanged || hasHeaderChanged)) {
+                newFile = { ...state.file };
+                if (headerChanged) newFile.header = entry.headerAfter ?? [];
+                if (hasHeaderChanged) newFile.hasHeader = entry.hasHeaderAfter!;
+            }
             return {
                 ...state,
                 rows: entry.rowsAfter,
-                file:
-                    state.file && headerChanged
-                        ? { ...state.file, header: entry.headerAfter ?? [] }
-                        : state.file,
+                file: newFile,
                 history: [...state.history, entry],
                 future: state.future.slice(0, -1),
             };

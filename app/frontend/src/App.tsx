@@ -11,6 +11,7 @@ import { ContextMenu, type MenuItem } from './components/ContextMenu';
 import {
     ConfirmDialog,
     LoadFile,
+    NewFile,
     SaveFile,
     SaveFileDialog,
     SupportedReadEncodings,
@@ -37,6 +38,7 @@ function App() {
     const [supportedEncodings, setSupportedEncodings] = useState<string[]>([]);
     const [selection, setSelection] = useState<Selection | null>(null);
     const [editing, setEditing] = useState<EditingCell | null>(null);
+    const [editingHeader, setEditingHeader] = useState<number | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [contextMenu, setContextMenu] = useState<{
         items: MenuItem[];
@@ -73,25 +75,6 @@ function App() {
         };
     }, []);
 
-    const handleSave = useCallback(async () => {
-        if (!file) return;
-        try {
-            await SaveFile(
-                file.path,
-                file.usedEncoding,
-                file.lineEnding,
-                file.delimiter,
-                file.hasHeader,
-                file.hasHeader ? file.header : [],
-                rows,
-            );
-            dispatch({ type: 'SAVED' });
-            setError(null);
-        } catch (e) {
-            setError(String(e));
-        }
-    }, [file, rows]);
-
     const handleSaveAs = useCallback(async () => {
         if (!file) return;
         try {
@@ -119,6 +102,56 @@ function App() {
         }
     }, [file, rows]);
 
+    // Save falls back to Save As when there's no path (e.g., newly created
+    // Untitled file).
+    const handleSave = useCallback(async () => {
+        if (!file) return;
+        if (!file.path) {
+            await handleSaveAs();
+            return;
+        }
+        try {
+            await SaveFile(
+                file.path,
+                file.usedEncoding,
+                file.lineEnding,
+                file.delimiter,
+                file.hasHeader,
+                file.hasHeader ? file.header : [],
+                rows,
+            );
+            dispatch({ type: 'SAVED' });
+            setError(null);
+        } catch (e) {
+            setError(String(e));
+        }
+    }, [file, rows, handleSaveAs]);
+
+    const handleNew = useCallback(async () => {
+        if (dirty) {
+            try {
+                const ok = await ConfirmDialog(
+                    'Discard changes?',
+                    'You have unsaved changes. Create a new file anyway?',
+                );
+                if (!ok) return;
+            } catch (e) {
+                setError(String(e));
+                return;
+            }
+        }
+        try {
+            const blank = await NewFile();
+            dispatch({ type: 'LOAD', payload: blank });
+            setSelection(null);
+            setEditing(null);
+            setEditingHeader(null);
+            setError(null);
+        } catch (e) {
+            setError(String(e));
+        }
+    }, [dirty]);
+
     useEffect(() => {
         const offSave = EventsOn('menu:save', () => {
             handleSave();
@@ -126,40 +159,62 @@ function App() {
         const offSaveAs = EventsOn('menu:saveAs', () => {
             handleSaveAs();
         });
+        const offNew = EventsOn('menu:new', () => {
+            handleNew();
+        });
         return () => {
             offSave();
             offSaveAs();
+            offNew();
         };
-    }, [handleSave, handleSaveAs]);
+    }, [handleSave, handleSaveAs, handleNew]);
 
     const handleEncodingChange = useCallback(
         async (encoding: string) => {
             if (!file) return;
+            // No backing file (Untitled, or never saved) → just update the
+            // metadata in memory; nothing to re-decode.
+            if (!file.path) {
+                dispatch({ type: 'UPDATE_FILE', patch: { usedEncoding: encoding } });
+                return;
+            }
+            if (dirty) {
+                try {
+                    const ok = await ConfirmDialog(
+                        'Discard changes?',
+                        `Re-reading the file with ${encoding} will discard your unsaved edits. Continue?`,
+                    );
+                    if (!ok) return;
+                } catch (e) {
+                    setError(String(e));
+                    return;
+                }
+            }
             try {
                 const result = await LoadFile(file.path, encoding, file.delimiter, file.hasHeader);
                 dispatch({ type: 'LOAD', payload: result });
                 setSelection(null);
                 setEditing(null);
+                setEditingHeader(null);
                 setError(null);
             } catch (e) {
                 setError(String(e));
             }
         },
-        [file],
+        [file, dirty],
     );
 
+    // hasHeader is purely an in-memory interpretation — toggling it just
+    // shuffles the first row between rows[] and header[]. This avoids
+    // re-reading the file (which would fail for Untitled documents and
+    // would silently discard unsaved edits).
     const handleHasHeaderToggle = useCallback(
-        async (hasHeader: boolean) => {
+        (hasHeader: boolean) => {
             if (!file) return;
-            try {
-                const result = await LoadFile(file.path, file.usedEncoding, file.delimiter, hasHeader);
-                dispatch({ type: 'LOAD', payload: result });
-                setSelection(null);
-                setEditing(null);
-                setError(null);
-            } catch (e) {
-                setError(String(e));
-            }
+            dispatch({ type: 'SET_HAS_HEADER', value: hasHeader });
+            setSelection(null);
+            setEditing(null);
+            setEditingHeader(null);
         },
         [file],
     );
@@ -204,6 +259,39 @@ function App() {
 
     const handleCancelEdit = useCallback(() => {
         setEditing(null);
+    }, []);
+
+    const handleStartHeaderEdit = useCallback((columnIndex: number) => {
+        setEditingHeader(columnIndex);
+    }, []);
+
+    const handleCommitHeaderEdit = useCallback(
+        (value: string, direction: CommitDirection) => {
+            if (editingHeader === null) {
+                setEditingHeader(null);
+                return;
+            }
+            dispatch({
+                type: 'RENAME_COLUMN',
+                columnIndex: editingHeader,
+                value,
+            });
+            // Move to neighbor header on Tab. Enter just exits.
+            if (direction === 'left' || direction === 'right') {
+                const delta = direction === 'left' ? -1 : 1;
+                const next = editingHeader + delta;
+                if (next >= 0 && next < maxColumns) {
+                    setEditingHeader(next);
+                    return;
+                }
+            }
+            setEditingHeader(null);
+        },
+        [editingHeader, maxColumns],
+    );
+
+    const handleCancelHeaderEdit = useCallback(() => {
+        setEditingHeader(null);
     }, []);
 
     const handleUndo = useCallback(() => dispatch({ type: 'UNDO' }), []);
@@ -467,6 +555,62 @@ function App() {
         [rows.length],
     );
 
+    const moveRows = useCallback(
+        (startIndex: number, count: number, direction: 'up' | 'down') => {
+            dispatch({ type: 'MOVE_ROWS', startIndex, count, direction });
+            const delta = direction === 'up' ? -1 : 1;
+            const newStart = startIndex + delta;
+            if (newStart < 0 || newStart + count > rows.length) return;
+            setSelection({
+                anchor: { rowIndex: newStart, columnIndex: 0 },
+                focus: {
+                    rowIndex: newStart + count - 1,
+                    columnIndex: Math.max(0, maxColumns - 1),
+                },
+            });
+        },
+        [rows.length, maxColumns],
+    );
+
+    const moveCols = useCallback(
+        (startIndex: number, count: number, direction: 'left' | 'right') => {
+            dispatch({ type: 'MOVE_COLS', startIndex, count, direction });
+            const delta = direction === 'left' ? -1 : 1;
+            const newStart = startIndex + delta;
+            if (newStart < 0 || newStart + count > maxColumns) return;
+            setSelection({
+                anchor: { rowIndex: 0, columnIndex: newStart },
+                focus: {
+                    rowIndex: Math.max(0, rows.length - 1),
+                    columnIndex: newStart + count - 1,
+                },
+            });
+        },
+        [rows.length, maxColumns],
+    );
+
+    // Alt+arrow shortcut handlers — operate on whatever the selection is
+    // currently covering (defaults to focus row/col).
+    const moveRowsByKey = useCallback(
+        (direction: 'up' | 'down') => {
+            if (!selection) return;
+            const fb = selection.focus.rowIndex;
+            const range = selectedRowRange(fb);
+            moveRows(range.start, range.count, direction);
+        },
+        [selection, selectedRowRange, moveRows],
+    );
+
+    const moveColsByKey = useCallback(
+        (direction: 'left' | 'right') => {
+            if (!selection) return;
+            const fb = selection.focus.columnIndex;
+            const range = selectedColRange(fb);
+            moveCols(range.start, range.count, direction);
+        },
+        [selection, selectedColRange, moveCols],
+    );
+
     const handleContextMenu = useCallback(
         (e: React.MouseEvent, target: ContextMenuTarget) => {
             e.preventDefault();
@@ -490,8 +634,20 @@ function App() {
                             onClick: () => duplicateRows(range.start, range.count),
                         },
                         {
+                            label: `Move ${label} up`,
+                            onClick: () => moveRows(range.start, range.count, 'up'),
+                            disabled: range.start === 0,
+                            separatorBefore: true,
+                        },
+                        {
+                            label: `Move ${label} down`,
+                            onClick: () => moveRows(range.start, range.count, 'down'),
+                            disabled: range.start + range.count >= rows.length,
+                        },
+                        {
                             label: `Delete ${label}`,
                             onClick: () => deleteRows(range.start, range.count),
+                            separatorBefore: true,
                         },
                     ];
                     break;
@@ -514,8 +670,20 @@ function App() {
                             onClick: () => duplicateCols(range.start, range.count),
                         },
                         {
+                            label: `Move ${label} left`,
+                            onClick: () => moveCols(range.start, range.count, 'left'),
+                            disabled: range.start === 0,
+                            separatorBefore: true,
+                        },
+                        {
+                            label: `Move ${label} right`,
+                            onClick: () => moveCols(range.start, range.count, 'right'),
+                            disabled: range.start + range.count >= maxColumns,
+                        },
+                        {
                             label: `Delete ${label}`,
                             onClick: () => deleteCols(range.start, range.count),
+                            separatorBefore: true,
                         },
                     ];
                     break;
@@ -543,14 +711,18 @@ function App() {
             insertRowsBelow,
             duplicateRows,
             deleteRows,
+            moveRows,
             insertColsLeft,
             insertColsRight,
             duplicateCols,
             deleteCols,
+            moveCols,
             handleCut,
             handleCopy,
             handlePaste,
             handleClear,
+            rows.length,
+            maxColumns,
         ],
     );
 
@@ -572,20 +744,26 @@ function App() {
                     onStartEdit={handleStartEdit}
                     onCommitEdit={handleCommitEdit}
                     onCancelEdit={handleCancelEdit}
+                    editingHeader={editingHeader}
+                    onStartHeaderEdit={handleStartHeaderEdit}
+                    onCommitHeaderEdit={handleCommitHeaderEdit}
+                    onCancelHeaderEdit={handleCancelHeaderEdit}
                     onUndo={handleUndo}
                     onRedo={handleRedo}
                     onCopy={handleCopy}
                     onCut={handleCut}
                     onPaste={handlePaste}
                     onClear={handleClear}
+                    onMoveRows={moveRowsByKey}
+                    onMoveCols={moveColsByKey}
                     onContextMenu={handleContextMenu}
                 />
             ) : (
                 <main className="placeholder">
                     <h1>CSV Editor</h1>
                     <p>
-                        Open a CSV or TSV file from the <strong>File ▸ Open…</strong> menu
-                        (⌘O).
+                        Create a new file with <strong>File ▸ New</strong> (⌘N) or open
+                        an existing file with <strong>File ▸ Open…</strong> (⌘O).
                     </p>
                 </main>
             )}

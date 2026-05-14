@@ -36,12 +36,18 @@ interface VirtualTableProps {
     onStartEdit: (cell: EditingCell) => void;
     onCommitEdit: (value: string, direction: CommitDirection) => void;
     onCancelEdit: () => void;
+    editingHeader: number | null;
+    onStartHeaderEdit: (columnIndex: number) => void;
+    onCommitHeaderEdit: (value: string, direction: CommitDirection) => void;
+    onCancelHeaderEdit: () => void;
     onUndo: () => void;
     onRedo: () => void;
     onCopy: () => void;
     onCut: () => void;
     onPaste: () => void;
     onClear: () => void;
+    onMoveRows: (direction: 'up' | 'down') => void;
+    onMoveCols: (direction: 'left' | 'right') => void;
     onContextMenu: (e: React.MouseEvent, target: ContextMenuTarget) => void;
 }
 
@@ -60,12 +66,18 @@ export function VirtualTable({
     onStartEdit,
     onCommitEdit,
     onCancelEdit,
+    editingHeader,
+    onStartHeaderEdit,
+    onCommitHeaderEdit,
+    onCancelHeaderEdit,
     onUndo,
     onRedo,
     onCopy,
     onCut,
     onPaste,
     onClear,
+    onMoveRows,
+    onMoveCols,
     onContextMenu,
 }: VirtualTableProps) {
     const columns = useMemo<ColumnDef<Row>[]>(() => {
@@ -95,6 +107,16 @@ export function VirtualTable({
 
     const scrollRef = useRef<HTMLDivElement>(null);
     const draggingRef = useRef(false);
+    // Header click is deferred so a dblclick (for header rename) can cancel
+    // the would-be column selection.
+    const headerClickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const cancelHeaderClickTimer = useCallback(() => {
+        if (headerClickTimerRef.current !== null) {
+            clearTimeout(headerClickTimerRef.current);
+            headerClickTimerRef.current = null;
+        }
+    }, []);
+    useEffect(() => () => cancelHeaderClickTimer(), [cancelHeaderClickTimer]);
 
     const rowVirtualizer = useVirtualizer({
         count: rows.length,
@@ -187,10 +209,34 @@ export function VirtualTable({
 
     const handleKeyDown = useCallback(
         (e: React.KeyboardEvent<HTMLDivElement>) => {
-            if (editing) return;
+            if (editing || editingHeader !== null) return;
             if (rows.length === 0 || maxColumns === 0) return;
 
             const cmdOrCtrl = e.metaKey || e.ctrlKey;
+
+            // Alt + arrow moves the selected rows / columns.
+            if (e.altKey && !cmdOrCtrl && !e.shiftKey && selection) {
+                if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    onMoveRows('up');
+                    return;
+                }
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    onMoveRows('down');
+                    return;
+                }
+                if (e.key === 'ArrowLeft') {
+                    e.preventDefault();
+                    onMoveCols('left');
+                    return;
+                }
+                if (e.key === 'ArrowRight') {
+                    e.preventDefault();
+                    onMoveCols('right');
+                    return;
+                }
+            }
 
             if (cmdOrCtrl && e.key.toLowerCase() === 'z' && !e.shiftKey) {
                 e.preventDefault();
@@ -319,6 +365,7 @@ export function VirtualTable({
             lastCol,
             selection,
             editing,
+            editingHeader,
             setFocus,
             onSelectionChange,
             onStartEdit,
@@ -328,6 +375,8 @@ export function VirtualTable({
             onCut,
             onPaste,
             onClear,
+            onMoveRows,
+            onMoveCols,
         ],
     );
 
@@ -369,14 +418,37 @@ export function VirtualTable({
                             {hg.headers.map((h, idx) => {
                                 const isRowNumHeader = idx === 0;
                                 const dataColIdx = idx - 1;
+                                const isHeaderEditable = !isRowNumHeader && header !== null;
+                                const isEditingThis =
+                                    !isRowNumHeader && editingHeader === dataColIdx;
+                                const cellWidth = h.getSize();
                                 const headerHandlers = isRowNumHeader
                                     ? {}
                                     : {
                                           onMouseDown: (e: React.MouseEvent<HTMLDivElement>) => {
                                               if (e.button !== 0) return;
+                                              if (isEditingThis) return;
+                                              // Always prevent the browser's default text
+                                              // selection on header cells. Deferring the
+                                              // state-changing selectColumn keeps the DOM
+                                              // stable so dblclick still fires.
                                               e.preventDefault();
                                               window.getSelection()?.removeAllRanges();
-                                              selectColumn(dataColIdx, e.shiftKey);
+                                              cancelHeaderClickTimer();
+                                              if (e.shiftKey) {
+                                                  selectColumn(dataColIdx, true);
+                                                  return;
+                                              }
+                                              headerClickTimerRef.current = setTimeout(() => {
+                                                  headerClickTimerRef.current = null;
+                                                  selectColumn(dataColIdx, false);
+                                              }, 250);
+                                          },
+                                          onDoubleClick: (e: React.MouseEvent<HTMLDivElement>) => {
+                                              e.preventDefault();
+                                              window.getSelection()?.removeAllRanges();
+                                              cancelHeaderClickTimer();
+                                              if (isHeaderEditable) onStartHeaderEdit(dataColIdx);
                                           },
                                           onContextMenu: (e: React.MouseEvent<HTMLDivElement>) => {
                                               onContextMenu(e, {
@@ -387,12 +459,25 @@ export function VirtualTable({
                                       };
                                 return (
                                     <div
-                                        className="vt-cell vt-cell-head"
+                                        className={
+                                            'vt-cell vt-cell-head' +
+                                            (isEditingThis ? ' vt-cell-editing' : '')
+                                        }
                                         key={h.id}
-                                        style={{ width: h.getSize() }}
+                                        style={{ width: cellWidth }}
                                         {...headerHandlers}
                                     >
-                                        {flexRender(h.column.columnDef.header, h.getContext())}
+                                        {isEditingThis ? (
+                                            <CellEditor
+                                                initialValue={header?.[dataColIdx] ?? ''}
+                                                width={cellWidth}
+                                                height={HEAD_HEIGHT}
+                                                onCommit={onCommitHeaderEdit}
+                                                onCancel={onCancelHeaderEdit}
+                                            />
+                                        ) : (
+                                            flexRender(h.column.columnDef.header, h.getContext())
+                                        )}
                                     </div>
                                 );
                             })}

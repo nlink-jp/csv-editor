@@ -236,6 +236,35 @@ func (b *Bindings) RequestSaveAs() {
 	wailsRuntime.EventsEmit(b.ctx, "menu:saveAs")
 }
 
+// RequestNewFile is invoked from File ▸ New menu. The frontend listens
+// for "menu:new" so it can confirm discarding unsaved changes first.
+func (b *Bindings) RequestNewFile() {
+	wailsRuntime.EventsEmit(b.ctx, "menu:new")
+}
+
+// NewFile returns a blank in-memory file scaffold (Untitled, 5×3) and
+// updates the window title. Called by the frontend after the user has
+// confirmed any unsaved-changes prompt.
+func (b *Bindings) NewFile() *FileLoadResult {
+	wailsRuntime.WindowSetTitle(b.ctx, "Untitled — CSV Editor")
+	rows := make([][]string, 5)
+	for i := range rows {
+		rows[i] = []string{"", "", ""}
+	}
+	return &FileLoadResult{
+		Path:             "",
+		Filename:         "Untitled.csv",
+		DetectedEncoding: string(encoding.UTF8),
+		UsedEncoding:     string(encoding.UTF8),
+		Delimiter:        ",",
+		LineEnding:       string(csvio.LF),
+		HasHeader:        false,
+		Header:           []string{},
+		Rows:             rows,
+		MaxColumns:       3,
+	}
+}
+
 // ConfirmDialog shows a Yes/No OS-native dialog. Returns true for Yes.
 func (b *Bindings) ConfirmDialog(title, message string) (bool, error) {
 	result, err := wailsRuntime.MessageDialog(b.ctx, wailsRuntime.MessageDialogOptions{
