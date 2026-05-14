@@ -18,7 +18,17 @@ const fileName = "config.json"
 const maxRecentFiles = 10
 
 type Config struct {
-	RecentFiles []string `json:"recentFiles"`
+	RecentFiles []string     `json:"recentFiles"`
+	Window      *WindowState `json:"window,omitempty"`
+}
+
+// WindowState is the last-known position and size of the main window.
+// Restored on next launch so the user's preferred frame survives sessions.
+type WindowState struct {
+	X      int `json:"x"`
+	Y      int `json:"y"`
+	Width  int `json:"width"`
+	Height int `json:"height"`
 }
 
 func dirPath() (string, error) {

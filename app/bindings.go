@@ -31,9 +31,34 @@ func (b *Bindings) startup(ctx context.Context) {
 	wailsRuntime.OnFileDrop(ctx, func(x, y int, paths []string) {
 		b.handleFileDrop(ctx, x, y, paths)
 	})
+
+	// Restore the saved window position. Size is already applied via App
+	// options before the window exists; position has no equivalent option
+	// so it is set after creation. A 0,0 fallback is left alone — the OS
+	// will pick a sensible spot on the active screen.
+	if cfg, err := config.Load(); err == nil && cfg.Window != nil {
+		if cfg.Window.X != 0 || cfg.Window.Y != 0 {
+			wailsRuntime.WindowSetPosition(ctx, cfg.Window.X, cfg.Window.Y)
+		}
+	}
 }
 
 func (b *Bindings) shutdown(_ context.Context) {
+}
+
+// saveWindowState persists the current window frame so the next launch
+// restores it. Wired as Wails' OnBeforeClose callback. Returns false so
+// the close proceeds normally.
+func (b *Bindings) saveWindowState(ctx context.Context) (prevent bool) {
+	w, h := wailsRuntime.WindowGetSize(ctx)
+	x, y := wailsRuntime.WindowGetPosition(ctx)
+	cfg, err := config.Load()
+	if err != nil || cfg == nil {
+		cfg = &config.Config{}
+	}
+	cfg.Window = &config.WindowState{X: x, Y: y, Width: w, Height: h}
+	_ = config.Save(cfg)
+	return false
 }
 
 // Version returns the build version (set via -ldflags at build time).

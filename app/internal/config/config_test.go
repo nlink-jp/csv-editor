@@ -1,9 +1,59 @@
 package config
 
 import (
+	"encoding/json"
 	"reflect"
 	"testing"
 )
+
+func jsonMarshal(c *Config) ([]byte, error) {
+	return json.Marshal(c)
+}
+
+func jsonUnmarshal(data []byte) (*Config, error) {
+	var c Config
+	if err := json.Unmarshal(data, &c); err != nil {
+		return nil, err
+	}
+	return &c, nil
+}
+
+func TestConfigRoundTripWithWindow(t *testing.T) {
+	// Verify the WindowState struct round-trips through JSON without
+	// losing fields — guards against accidental tag/typing changes.
+	in := &Config{
+		RecentFiles: []string{"/a", "/b"},
+		Window:      &WindowState{X: 100, Y: 200, Width: 1280, Height: 800},
+	}
+	data, err := jsonMarshal(in)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	out, err := jsonUnmarshal(data)
+	if err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if !reflect.DeepEqual(out, in) {
+		t.Errorf("round trip: got %+v / %+v, want %+v / %+v",
+			out, out.Window, in, in.Window)
+	}
+}
+
+func TestConfigBackwardCompatNoWindow(t *testing.T) {
+	// Older config files (pre-window state) must still load with a nil
+	// Window so the startup hook leaves the default frame in place.
+	data := []byte(`{"recentFiles":["/a"]}`)
+	out, err := jsonUnmarshal(data)
+	if err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if out.Window != nil {
+		t.Errorf("expected Window to be nil for legacy config, got %+v", out.Window)
+	}
+	if !reflect.DeepEqual(out.RecentFiles, []string{"/a"}) {
+		t.Errorf("RecentFiles = %v, want [/a]", out.RecentFiles)
+	}
+}
 
 func TestAddRecent(t *testing.T) {
 	tests := []struct {

@@ -7,6 +7,13 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- Window position and size are now persisted to the config file
+  (`window.x`, `window.y`, `window.width`, `window.height`) and restored
+  on next launch. Saved via Wails' `OnBeforeClose` hook; size is applied
+  from `config.json` at app startup, position is applied after the
+  window exists. Sub-200px dimensions are rejected (fallback to default).
+
 ## [0.1.0] - 2026-05-14
 
 Initial release — Phase 1 through Phase 3 of the RFP feature set, ready

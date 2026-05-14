@@ -53,6 +53,7 @@ CP932), row/column copy operations, and TSV clipboard expansion correctly.
 - **Native title bar** showing the open file name.
 - **OS dark / light theme** auto-follows the system appearance.
 - **OS-native menus and dialogs** (file picker, paste-confirm).
+- **Window position and size** are remembered across sessions.
 
 ## Keyboard shortcuts
 

@@ -30,16 +30,35 @@ func (w menuWrapper) apply(ctx context.Context) {
 	wailsRuntime.MenuUpdateApplicationMenu(ctx)
 }
 
+const (
+	defaultWindowWidth  = 1280
+	defaultWindowHeight = 800
+	minWindowDimension  = 200
+)
+
 func main() {
 	bindings := NewBindings()
 	buildMenuFunc = func(b *Bindings) any {
 		return menuWrapper{m: buildMenu(b)}
 	}
 
+	// Restore the last-known window size if it looks sensible. Position is
+	// applied separately in the startup hook, after the window exists.
+	width := defaultWindowWidth
+	height := defaultWindowHeight
+	if cfg, err := config.Load(); err == nil && cfg.Window != nil {
+		if cfg.Window.Width >= minWindowDimension {
+			width = cfg.Window.Width
+		}
+		if cfg.Window.Height >= minWindowDimension {
+			height = cfg.Window.Height
+		}
+	}
+
 	err := wails.Run(&options.App{
 		Title:                    "CSV Editor",
-		Width:                    1280,
-		Height:                   800,
+		Width:                    width,
+		Height:                   height,
 		EnableDefaultContextMenu: true,
 		AssetServer: &assetserver.Options{
 			Assets: assets,
@@ -48,6 +67,7 @@ func main() {
 		Menu:             buildMenu(bindings),
 		OnStartup:        bindings.startup,
 		OnShutdown:       bindings.shutdown,
+		OnBeforeClose:    bindings.saveWindowState,
 		Bind: []interface{}{
 			bindings,
 		},
