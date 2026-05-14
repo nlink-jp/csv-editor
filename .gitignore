@@ -10,6 +10,7 @@ app/dist/
 app/frontend/node_modules/
 app/frontend/dist/
 app/frontend/wailsjs/
+app/frontend/package.json.md5
 
 # Credentials
 .env

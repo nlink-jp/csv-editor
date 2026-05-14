@@ -1,16 +1,30 @@
 :root {
     --bg: #fafafa;
+    --bg-elev: #ffffff;
+    --bg-toolbar: #f0f0f0;
     --fg: #222;
     --fg-muted: #888;
-    --border: #e0e0e0;
+    --border: #d8d8d8;
+    --accent: #2f7bff;
+    --accent-bg: rgba(47, 123, 255, 0.12);
+    --row-alt: #f6f6f6;
+    --error-bg: #fde8e8;
+    --error-fg: #8a1f1f;
 }
 
 @media (prefers-color-scheme: dark) {
     :root {
         --bg: #1e1e1e;
+        --bg-elev: #252526;
+        --bg-toolbar: #2d2d2d;
         --fg: #e8e8e8;
         --fg-muted: #888;
-        --border: #333;
+        --border: #3a3a3a;
+        --accent: #6aa9ff;
+        --accent-bg: rgba(106, 169, 255, 0.18);
+        --row-alt: #232323;
+        --error-bg: #5a1c1c;
+        --error-fg: #fcd2d2;
     }
 }
 
@@ -28,7 +42,161 @@ html, body {
         "Hiragino Kaku Gothic ProN", "Noto Sans CJK JP", sans-serif;
     background: var(--bg);
     color: var(--fg);
+    overflow: hidden;
 }
+
+/* ------------------- Toolbar ------------------- */
+
+.toolbar {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 0.75rem;
+    background: var(--bg-toolbar);
+    border-bottom: 1px solid var(--border);
+    font-size: 0.85rem;
+    flex-shrink: 0;
+}
+
+.toolbar-button {
+    padding: 0.25rem 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--bg-elev);
+    color: var(--fg);
+    cursor: pointer;
+    font-size: 0.85rem;
+}
+
+.toolbar-button:hover {
+    background: var(--accent-bg);
+    border-color: var(--accent);
+}
+
+.toolbar-divider {
+    width: 1px;
+    height: 1.25rem;
+    background: var(--border);
+    margin: 0 0.25rem;
+}
+
+.toolbar-field {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    color: var(--fg-muted);
+}
+
+.toolbar-field select,
+.toolbar-field input[type="checkbox"] {
+    margin: 0;
+}
+
+.toolbar-field select {
+    background: var(--bg-elev);
+    color: var(--fg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 0.15rem 0.35rem;
+    font-size: 0.85rem;
+}
+
+.toolbar-label {
+    color: var(--fg-muted);
+    font-size: 0.8rem;
+}
+
+.toolbar-spacer {
+    flex: 1;
+}
+
+.toolbar-meta {
+    color: var(--fg-muted);
+    font-size: 0.8rem;
+}
+
+/* ------------------- Error bar ------------------- */
+
+.error-bar {
+    padding: 0.4rem 0.75rem;
+    background: var(--error-bg);
+    color: var(--error-fg);
+    font-size: 0.85rem;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+/* ------------------- Virtual table ------------------- */
+
+.vt-scroll {
+    flex: 1;
+    overflow: auto;
+    background: var(--bg-elev);
+    min-height: 0;
+    outline: none;
+    position: relative;
+}
+
+.vt-content {
+    position: relative;
+}
+
+.vt-head {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--bg-toolbar);
+    border-bottom: 1px solid var(--border);
+}
+
+.vt-row {
+    position: absolute;
+    top: 0;
+    left: 0;
+    display: flex;
+    border-bottom: 1px solid var(--border);
+}
+
+.vt-row-head {
+    position: relative; /* override absolute for header row */
+    transform: none;
+    background: var(--bg-toolbar);
+    height: 32px;
+}
+
+.vt-cell {
+    padding: 0 0.5rem;
+    line-height: 28px;
+    height: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    border-right: 1px solid var(--border);
+    font-variant-numeric: tabular-nums;
+    box-sizing: border-box;
+}
+
+.vt-cell-head {
+    font-weight: 600;
+    color: var(--fg);
+    user-select: none;
+    line-height: 32px;
+}
+
+.vt-cell-rownum {
+    background: var(--bg-toolbar);
+    color: var(--fg-muted);
+    text-align: right;
+    font-size: 0.8rem;
+    user-select: none;
+}
+
+.vt-cell-selected {
+    background: var(--accent-bg);
+    box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+/* ------------------- Placeholder ------------------- */
 
 .placeholder {
     flex: 1;
@@ -47,7 +215,21 @@ html, body {
     color: var(--fg);
 }
 
-.version {
-    margin-top: 1rem;
+/* ------------------- Status bar ------------------- */
+
+.statusbar {
+    padding: 0.3rem 0.75rem;
+    background: var(--bg-toolbar);
+    border-top: 1px solid var(--border);
     font-size: 0.75rem;
+    color: var(--fg);
+    font-variant-numeric: tabular-nums;
+    flex-shrink: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.statusbar-muted {
+    color: var(--fg-muted);
 }

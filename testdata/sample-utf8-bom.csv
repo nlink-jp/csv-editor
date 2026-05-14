@@ -1,0 +1,8 @@
+﻿id,name,department,note
+1,田中太郎,営業部,"カンマ,込みのメモ"
+2,鈴木花子,開発部,"複数行
+にまたがる
+セル"
+3,Yamada,QA,"hello, ""quoted"" world"
+4,佐藤,人事,普通のセル
+5,Watanabe,Marketing,
