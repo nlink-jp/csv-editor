@@ -45,76 +45,6 @@ html, body {
     overflow: hidden;
 }
 
-/* ------------------- Toolbar ------------------- */
-
-.toolbar {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.4rem 0.75rem;
-    background: var(--bg-toolbar);
-    border-bottom: 1px solid var(--border);
-    font-size: 0.85rem;
-    flex-shrink: 0;
-}
-
-.toolbar-button {
-    padding: 0.25rem 0.75rem;
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    background: var(--bg-elev);
-    color: var(--fg);
-    cursor: pointer;
-    font-size: 0.85rem;
-}
-
-.toolbar-button:hover {
-    background: var(--accent-bg);
-    border-color: var(--accent);
-}
-
-.toolbar-divider {
-    width: 1px;
-    height: 1.25rem;
-    background: var(--border);
-    margin: 0 0.25rem;
-}
-
-.toolbar-field {
-    display: flex;
-    align-items: center;
-    gap: 0.35rem;
-    color: var(--fg-muted);
-}
-
-.toolbar-field select,
-.toolbar-field input[type="checkbox"] {
-    margin: 0;
-}
-
-.toolbar-field select {
-    background: var(--bg-elev);
-    color: var(--fg);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    padding: 0.15rem 0.35rem;
-    font-size: 0.85rem;
-}
-
-.toolbar-label {
-    color: var(--fg-muted);
-    font-size: 0.8rem;
-}
-
-.toolbar-spacer {
-    flex: 1;
-}
-
-.toolbar-meta {
-    color: var(--fg-muted);
-    font-size: 0.8rem;
-}
-
 /* ------------------- Error bar ------------------- */
 
 .error-bar {
@@ -218,18 +148,77 @@ html, body {
 /* ------------------- Status bar ------------------- */
 
 .statusbar {
-    padding: 0.3rem 0.75rem;
+    display: flex;
+    align-items: center;
+    padding: 0 0.5rem;
     background: var(--bg-toolbar);
     border-top: 1px solid var(--border);
     font-size: 0.75rem;
     color: var(--fg);
     font-variant-numeric: tabular-nums;
     flex-shrink: 0;
+    height: 24px;
+    gap: 1rem;
+}
+
+.statusbar-left {
+    flex: 1;
+    min-width: 0;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
+.statusbar-right {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-shrink: 0;
+}
+
+.statusbar-item {
+    display: inline-flex;
+    align-items: center;
+    line-height: 1;
+}
+
 .statusbar-muted {
     color: var(--fg-muted);
+}
+
+.statusbar-toggle,
+.statusbar-select {
+    background: transparent;
+    border: none;
+    color: var(--fg);
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 0.75rem;
+    font-family: inherit;
+    font-variant-numeric: tabular-nums;
+}
+
+.statusbar-toggle:hover,
+.statusbar-select:hover,
+.statusbar-select-wrap:hover {
+    background: var(--accent-bg);
+}
+
+.statusbar-toggle strong {
+    font-weight: 600;
+    color: var(--fg);
+}
+
+.statusbar-select-wrap {
+    border-radius: 3px;
+}
+
+.statusbar-select {
+    appearance: none;
+    -webkit-appearance: none;
+    padding-right: 18px;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3e%3cpath fill='%23888' d='M2 4l3 3 3-3'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 4px center;
 }

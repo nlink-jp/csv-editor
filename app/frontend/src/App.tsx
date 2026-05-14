@@ -1,12 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import './App.css';
-import { Toolbar } from './components/Toolbar';
+import { StatusBar } from './components/StatusBar';
 import { VirtualTable, type SelectedCell } from './components/VirtualTable';
-import {
-    LoadFile,
-    OpenFileDialog,
-    SupportedReadEncodings,
-} from '../wailsjs/go/main/Bindings';
+import { LoadFile, SupportedReadEncodings } from '../wailsjs/go/main/Bindings';
 import { EventsOn } from '../wailsjs/runtime/runtime';
 import type { main } from '../wailsjs/go/models';
 
@@ -33,19 +29,6 @@ function App() {
             offLoaded();
             offError();
         };
-    }, []);
-
-    const handleOpen = useCallback(async () => {
-        try {
-            const path = await OpenFileDialog();
-            if (!path) return;
-            const result = await LoadFile(path, '', '', true);
-            setFile(result);
-            setSelected(null);
-            setError(null);
-        } catch (e) {
-            setError(String(e));
-        }
     }, []);
 
     const handleEncodingChange = useCallback(
@@ -80,13 +63,6 @@ function App() {
 
     return (
         <div id="App">
-            <Toolbar
-                file={file}
-                supportedEncodings={supportedEncodings}
-                onOpen={handleOpen}
-                onEncodingChange={handleEncodingChange}
-                onHasHeaderToggle={handleHasHeaderToggle}
-            />
             {error && (
                 <div className="error-bar" onClick={() => setError(null)}>
                     {error}
@@ -103,20 +79,19 @@ function App() {
             ) : (
                 <main className="placeholder">
                     <h1>CSV Editor</h1>
-                    <p>Open a CSV or TSV file from the File menu, or use the Open button.</p>
+                    <p>
+                        Open a CSV or TSV file from the <strong>File ▸ Open…</strong> menu
+                        (⌘O).
+                    </p>
                 </main>
             )}
-            <footer className="statusbar">
-                {selected && file ? (
-                    <span>
-                        R{selected.rowIndex + 1} · C{selected.columnIndex + 1}
-                        {' · '}
-                        {(file.rows[selected.rowIndex]?.[selected.columnIndex] ?? '').slice(0, 200) || '∅'}
-                    </span>
-                ) : (
-                    <span className="statusbar-muted">No cell selected</span>
-                )}
-            </footer>
+            <StatusBar
+                file={file}
+                selected={selected}
+                supportedEncodings={supportedEncodings}
+                onEncodingChange={handleEncodingChange}
+                onHasHeaderToggle={handleHasHeaderToggle}
+            />
         </div>
     );
 }
