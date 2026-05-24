@@ -757,15 +757,7 @@ export function VirtualTable({
                                         style={{ width: cellWidth }}
                                         {...cellHandlers}
                                     >
-                                        {isEditing ? (
-                                            <CellEditor
-                                                initialValue={cellText}
-                                                width={cellWidth}
-                                                height={ROW_HEIGHT}
-                                                onCommit={onCommitEdit}
-                                                onCancel={onCancelEdit}
-                                            />
-                                        ) : cellMatches ? (
+                                        {cellMatches ? (
                                             renderCellWithMatches(cellText, cellMatches)
                                         ) : cellText.includes('\n') ? (
                                             renderTextWithNewlines(cellText, 'cell')

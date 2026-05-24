@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useReducer, useState } from 'react';
 import './App.css';
+import { CellEditDialog } from './components/CellEditDialog';
 import { StatusBar } from './components/StatusBar';
 import {
     VirtualTable,
@@ -1126,6 +1127,27 @@ function App() {
                     x={contextMenu.x}
                     y={contextMenu.y}
                     onClose={() => setContextMenu(null)}
+                />
+            )}
+            {editing && (
+                <CellEditDialog
+                    initialValue={rows[editing.rowIndex]?.[editing.columnIndex] ?? ''}
+                    rowIndex={editing.rowIndex}
+                    columnIndex={editing.columnIndex}
+                    onSave={(value) => {
+                        dispatch({
+                            type: 'APPLY_EDITS',
+                            edits: [
+                                {
+                                    rowIndex: editing.rowIndex,
+                                    columnIndex: editing.columnIndex,
+                                    value,
+                                },
+                            ],
+                        });
+                        setEditing(null);
+                    }}
+                    onCancel={() => setEditing(null)}
                 />
             )}
         </div>
