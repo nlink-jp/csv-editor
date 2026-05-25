@@ -400,7 +400,19 @@ func (b *Bindings) RequestNewWindow() {
 	}
 	if err := cmd.Start(); err != nil {
 		wailsRuntime.EventsEmit(b.ctx, "file:error", "new window: "+err.Error())
+		return
 	}
+	// Reap the child so its exit status doesn't accumulate as a zombie
+	// for the lifetime of this process. On macOS this waits on `open(1)`
+	// (which detaches and exits almost immediately after handing off to
+	// LaunchServices), so the goroutine returns quickly and we never see
+	// the actual child window's exit. On Windows the goroutine lives
+	// until the spawned csv-editor instance closes. We intentionally
+	// drop the exit status: a clean user-driven close returns 0 here,
+	// and a crash is already visible to the user as their child window
+	// disappearing — surfacing a second toast in the parent would be
+	// noisy without adding information.
+	go func() { _ = cmd.Wait() }()
 }
 
 // NewFile returns a blank in-memory file scaffold (Untitled, 5×3) and

@@ -7,6 +7,15 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **`File ▸ New Window` no longer leaks zombie child processes.**
+  `RequestNewWindow` now reaps the spawned process via `cmd.Wait` in a
+  goroutine and returns early on `cmd.Start` failure, preventing a defunct
+  entry per new-window invocation from accumulating in the parent process
+  table on Windows. On macOS the wait completes essentially immediately
+  because the spawn goes through `open(1)`.
+
 ### Security
 
 - **Saved CSV files are created with `0600` permissions** (owner read/write
