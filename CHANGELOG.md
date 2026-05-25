@@ -7,6 +7,31 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.6] - 2026-05-26
+
+### Fixed
+
+- **Inline cell editor no longer hides text behind scrollbars on Windows.**
+  The editor was a fixed cell-height `<textarea>` with `overflow: auto`;
+  Windows classic scrollbars (~17px each) left only ~11px of the 28px cell
+  for text. The editor now grows to fit its content — long values wrap
+  (no horizontal scrollbar) and the height tracks the content (no vertical
+  scrollbar until a 50vh cap), floating over neighbouring cells as an
+  overlay. macOS overlay scrollbars had hidden this, so it shipped
+  unnoticed. (Reported by @SweetSophia, #2.)
+- **Windows application icon is now the custom CSV icon** instead of the
+  Wails default "W" logo. `build/windows/icon.ico` still held the template
+  default from `wails init` — macOS regenerates its `.icns` from
+  `build/appicon.png` every build, but the Windows `.ico` is a static file
+  that was never updated when the custom icon was adopted. Regenerated with
+  the full size set (16–256, PNG-compressed).
+
+### Verification
+
+- Verified visually on macOS (Apple Silicon) and Windows (arm64 VM running
+  the x86_64 build under emulation). The frontend has no unit test harness;
+  the auto-grow behaviour (scrollHeight-based) is not measurable in jsdom.
+
 ## [0.1.5] - 2026-05-25
 
 ### Fixed
@@ -209,7 +234,8 @@ for daily use as a CSV/TSV editor on macOS (Apple Silicon) and Windows 11.
 - Apple Silicon prioritized; Intel macOS may work but is not actively
   validated.
 
-[Unreleased]: https://github.com/nlink-jp/csv-editor/compare/v0.1.5...HEAD
+[Unreleased]: https://github.com/nlink-jp/csv-editor/compare/v0.1.6...HEAD
+[0.1.6]: https://github.com/nlink-jp/csv-editor/compare/v0.1.5...v0.1.6
 [0.1.5]: https://github.com/nlink-jp/csv-editor/compare/v0.1.4...v0.1.5
 [0.1.4]: https://github.com/nlink-jp/csv-editor/compare/v0.1.3...v0.1.4
 [0.1.3]: https://github.com/nlink-jp/csv-editor/compare/v0.1.2...v0.1.3
