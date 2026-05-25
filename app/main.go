@@ -15,6 +15,7 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/menu/keys"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
+	"github.com/wailsapp/wails/v2/pkg/options/mac"
 	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
@@ -49,6 +50,9 @@ var version = "dev"
 
 //go:embed all:frontend/dist
 var assets embed.FS
+
+//go:embed build/appicon.png
+var appIcon []byte
 
 // menuWrapper implements bindings.applyMenu so rebuildMenu can swap the
 // native menu without bindings.go pulling in the wails menu types.
@@ -109,6 +113,20 @@ func main() {
 			DisableWebViewDrop: true,
 			CSSDropProperty:    "--wails-drop-target",
 			CSSDropValue:       "drop",
+		},
+		// macOS About panel content. Without this, "About CSV Editor"
+		// in the application menu opens a panel populated from
+		// Info.plist defaults (which still read CFBundleShortVersionString
+		// as "1.0.0" because Wails templates that field and we don't
+		// override it). Sourcing version from the same `version`
+		// ldflag the binary uses keeps the menu, the panel, and any
+		// programmatic Version() call in agreement from one input.
+		Mac: &mac.Options{
+			About: &mac.AboutInfo{
+				Title:   "CSV Editor",
+				Message: "Version " + version + "\n\nCSV/TSV viewer & editor for macOS and Windows.\n© 2026 nlink-jp",
+				Icon:    appIcon,
+			},
 		},
 	})
 
@@ -177,6 +195,10 @@ func buildMenu(b *Bindings) *menu.Menu {
 
 	if goruntime.GOOS == "darwin" {
 		appMenu.Append(menu.EditMenu())
+		// WindowMenu provides Minimize / Zoom / Bring All to Front —
+		// users expect these on macOS, and their absence is more visible
+		// once the AppMenu's About panel actually works.
+		appMenu.Append(menu.WindowMenu())
 	}
 
 	return appMenu
