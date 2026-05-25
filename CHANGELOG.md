@@ -7,6 +7,17 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- **File loads are now bounded to 500 MB.** Open / drag-drop / Open Recent
+  refuse files larger than that with `file too large: <path> exceeds
+  524288000 byte limit` instead of attempting to read the whole file into
+  memory. csv-editor's stated target is hundreds of thousands of rows
+  (~100 MB worst case for typical column counts), so the cap sits well
+  above legitimate use while protecting the app from OOM on an accidental
+  multi-gigabyte open. Implemented via `io.LimitReader` so a file that
+  grows between `Stat` and `Read` still cannot blow the read buffer.
+
 ### Fixed
 
 - **`File ▸ New Window` no longer leaks zombie child processes.**

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -16,6 +17,13 @@ import (
 
 	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
+
+// maxLoadFileSize caps how many bytes LoadFile will pull into memory.
+// csv-editor's stated target is "hundreds of thousands of rows" which
+// runs to roughly 100 MB for typical column counts, so 500 MB sits well
+// above legitimate use while still protecting the app from an accidental
+// open on a multi-gigabyte file.
+const maxLoadFileSize int64 = 500 * 1024 * 1024
 
 // Bindings is the thin Wails binding layer.
 // Business logic will be delegated to internal/ packages as features land.
@@ -153,9 +161,9 @@ func (b *Bindings) SaveFileDialog(defaultName string) (string, error) {
 // parses as CSV or TSV based on delimiterHint or filename, and returns the
 // parsed table. The window title is also updated to "<filename> — CSV Editor".
 func (b *Bindings) LoadFile(path, encodingHint, delimiterHint string, hasHeader bool) (*FileLoadResult, error) {
-	data, err := os.ReadFile(path)
+	data, err := readFileBounded(path, maxLoadFileSize)
 	if err != nil {
-		return nil, fmt.Errorf("read %s: %w", path, err)
+		return nil, err
 	}
 
 	detected := encoding.Detect(data)
@@ -214,6 +222,37 @@ func (b *Bindings) LoadFile(path, encodingHint, delimiterHint string, hasHeader 
 		Rows:             table.Rows,
 		MaxColumns:       table.MaxColumns(),
 	}, nil
+}
+
+// readFileBounded reads the entire file at path into memory, refusing
+// anything larger than max bytes. It opens the file, rejects directories,
+// then reads through an io.LimitReader capped at max+1 — the +1 lets us
+// distinguish "exactly at the limit" (accept) from "exceeds the limit"
+// (reject) without ever allocating more than max+1 bytes, so a file that
+// grows between Stat and Read (TOCTOU) still can't blow our memory.
+func readFileBounded(path string, max int64) ([]byte, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, fmt.Errorf("open %s: %w", path, err)
+	}
+	defer f.Close()
+
+	info, err := f.Stat()
+	if err != nil {
+		return nil, fmt.Errorf("stat %s: %w", path, err)
+	}
+	if info.IsDir() {
+		return nil, fmt.Errorf("%s is a directory", path)
+	}
+
+	data, err := io.ReadAll(io.LimitReader(f, max+1))
+	if err != nil {
+		return nil, fmt.Errorf("read %s: %w", path, err)
+	}
+	if int64(len(data)) > max {
+		return nil, fmt.Errorf("file too large: %s exceeds %d byte limit", path, max)
+	}
+	return data, nil
 }
 
 // SaveFile encodes the table back to path with the given encoding, line
