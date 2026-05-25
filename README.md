@@ -98,6 +98,8 @@ Calc.
 - **macOS 12+** (Apple Silicon recommended; Intel may work but is not
   prioritized — see [RFP](docs/en/csv-editor-rfp.md) §7)
 - **Windows 11** (Edge WebView2 ships with the OS; Windows 10 not supported)
+- **Maximum file size: 500 MB** (Open / drag-drop / Open Recent refuse
+  larger files with a clear error instead of loading them into memory).
 - **Building from source**: Go 1.23+, Node.js 20+, [Wails v2](https://wails.io)
 
 **Linux is not supported.** Maintainers do not have a Linux environment to

@@ -7,6 +7,8 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.4] - 2026-05-25
+
 ### Changed
 
 - **File loads are now bounded to 500 MB.** Open / drag-drop / Open Recent
@@ -34,6 +36,19 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
   left files world-readable on disk even with the default macOS umask, which
   could expose rows when saving into shared, cloud-synced, or backed-up
   directories. Existing files keep their current permissions on overwrite.
+
+### Documentation
+
+- README (en/ja) and CLAUDE.md now declare Linux explicitly out of scope.
+  Drive-by Linux porting PRs will be declined; users on Linux should use
+  LibreOffice Calc or Modern CSV. See the closed PR #1 thread for the
+  rationale.
+
+### Acknowledgments
+
+The three runtime changes above were originally surfaced by @SweetSophia
+in PR #1 (closed without merge). The code was rewritten from scratch with
+freshened helper signatures, tests, and rationale before landing.
 
 ## [0.1.3] - 2026-05-23
 
@@ -176,7 +191,9 @@ for daily use as a CSV/TSV editor on macOS (Apple Silicon) and Windows 11.
 - Apple Silicon prioritized; Intel macOS may work but is not actively
   validated.
 
-[Unreleased]: https://github.com/nlink-jp/csv-editor/compare/v0.1.2...HEAD
+[Unreleased]: https://github.com/nlink-jp/csv-editor/compare/v0.1.4...HEAD
+[0.1.4]: https://github.com/nlink-jp/csv-editor/compare/v0.1.3...v0.1.4
+[0.1.3]: https://github.com/nlink-jp/csv-editor/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/nlink-jp/csv-editor/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/nlink-jp/csv-editor/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/nlink-jp/csv-editor/releases/tag/v0.1.0
