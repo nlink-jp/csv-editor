@@ -7,6 +7,24 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.5] - 2026-05-25
+
+### Fixed
+
+- **macOS "About CSV Editor" panel now shows the actual build version**
+  (previously always "1.0.0" because Wails templates
+  `CFBundleShortVersionString` to that default and csv-editor never
+  overrode it). The panel now sources its version, title, message, and
+  icon from `Mac.About` in `wails.Run`, populated from the same `version`
+  ldflag the binary itself reports — application menu, About panel, and
+  any programmatic version readout stay in agreement from one input.
+
+### Added
+
+- **macOS Window menu** (`Minimize` / `Zoom` / `Bring All to Front`) is
+  now part of the standard macOS menu chain. Their absence was easier
+  to notice once the About panel started working.
+
 ## [0.1.4] - 2026-05-25
 
 ### Changed
@@ -191,7 +209,8 @@ for daily use as a CSV/TSV editor on macOS (Apple Silicon) and Windows 11.
 - Apple Silicon prioritized; Intel macOS may work but is not actively
   validated.
 
-[Unreleased]: https://github.com/nlink-jp/csv-editor/compare/v0.1.4...HEAD
+[Unreleased]: https://github.com/nlink-jp/csv-editor/compare/v0.1.5...HEAD
+[0.1.5]: https://github.com/nlink-jp/csv-editor/compare/v0.1.4...v0.1.5
 [0.1.4]: https://github.com/nlink-jp/csv-editor/compare/v0.1.3...v0.1.4
 [0.1.3]: https://github.com/nlink-jp/csv-editor/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/nlink-jp/csv-editor/compare/v0.1.1...v0.1.2
