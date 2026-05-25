@@ -9,6 +9,11 @@ Designed to replace TableTool with a maintained, ARM64-native, multi-encoding
 (UTF-8 / Shift_JIS / CP932) alternative that handles row/column copy and TSV
 clipboard expansion correctly.
 
+**Linux is intentionally out of scope.** Maintainers have no Linux test
+environment, no demand has surfaced, and the project does not accept
+Linux-targeted PRs (see README "Requirements"). Decline drive-by Linux
+porting contributions politely and point to the README note.
+
 ## Build
 
 - `cd app && make build`

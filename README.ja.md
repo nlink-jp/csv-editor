@@ -91,6 +91,12 @@ csv-editor は **表計算ソフトではない**。以下は実装しない:
 - **Windows 11** (Edge WebView2 同梱。Windows 10 は対象外)
 - **ソースビルド**: Go 1.23+、Node.js 20+、[Wails v2](https://wails.io)
 
+**Linux はサポート対象外です。** メンテナに GUI / IME / テーマ / ファイル
+ダイアログの動作確認環境がなく、Linux 向けバイナリの配布や Linux 対応 PR の
+受け入れ予定もありません。Linux 上で CSV を編集したい場合は
+[LibreOffice Calc](https://www.libreoffice.org/) や
+[Modern CSV](https://www.moderncsv.com/) などをご利用ください。
+
 ## インストール
 
 GitHub Releases でバイナリを配布。

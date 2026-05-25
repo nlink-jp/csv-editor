@@ -100,6 +100,12 @@ Calc.
 - **Windows 11** (Edge WebView2 ships with the OS; Windows 10 not supported)
 - **Building from source**: Go 1.23+, Node.js 20+, [Wails v2](https://wails.io)
 
+**Linux is not supported.** Maintainers do not have a Linux environment to
+verify GUI / IME / theme / file-dialog behavior, and the project has no plans
+to ship Linux binaries or accept Linux-targeted PRs. If you need a CSV editor
+on Linux, consider [LibreOffice Calc](https://www.libreoffice.org/) or
+[Modern CSV](https://www.moderncsv.com/).
+
 ## Installation
 
 Binaries are distributed via GitHub Releases.
