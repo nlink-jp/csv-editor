@@ -7,6 +7,14 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Security
+
+- **Saved CSV files are created with `0600` permissions** (owner read/write
+  only), down from `0644`. CSV files often contain PII; the previous mode
+  left files world-readable on disk even with the default macOS umask, which
+  could expose rows when saving into shared, cloud-synced, or backed-up
+  directories. Existing files keep their current permissions on overwrite.
+
 ## [0.1.3] - 2026-05-23
 
 ### Changed

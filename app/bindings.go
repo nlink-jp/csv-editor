@@ -249,7 +249,14 @@ func (b *Bindings) SaveFile(path, encodingName, lineEnding, delimiter string, ha
 		return fmt.Errorf("transcode to %s: %w", encodingName, err)
 	}
 
-	if err := os.WriteFile(path, data, 0644); err != nil {
+	// 0600: CSV files often contain PII or other private data. macOS's
+	// default umask (022) leaves explicit 0644 as 0644 on disk; 0600
+	// restricts the file to the owning user so a misplaced save into a
+	// world-readable directory or a cloud-sync folder doesn't expose
+	// rows to other local accounts or third-party backup readers.
+	// Pre-existing files keep their current mode (os.WriteFile only
+	// applies mode on create).
+	if err := os.WriteFile(path, data, 0600); err != nil {
 		return fmt.Errorf("write %s: %w", path, err)
 	}
 
