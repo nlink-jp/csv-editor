@@ -87,6 +87,14 @@ html, body {
     border-bottom: 1px solid var(--border);
 }
 
+/* The row holding the active cell editor is lifted above its siblings.
+   Each .vt-row is its own stacking context (it carries a transform), so a
+   z-index on the editing cell alone can't escape the row — without this,
+   later rows paint their cell text over the auto-grown editor (issue #2). */
+.vt-row-editing {
+    z-index: 20;
+}
+
 .vt-row-head {
     position: relative; /* override absolute for header row */
     transform: none;
@@ -166,12 +174,29 @@ html, body {
     user-select: none;
 }
 
-/* When the cell editor is a <textarea>, suppress its native resize handle
-   and let the inherited cell font flow naturally. */
+/* The cell editor is a <textarea> overlay that auto-grows to fit its
+   content (height is set imperatively in CellEditor.tsx). It is absolutely
+   positioned so growing it floats over neighbouring cells instead of
+   reflowing the table.
+
+   white-space: pre-wrap + overflow-x: hidden means long content wraps
+   rather than producing a horizontal scrollbar. overflow-y: auto only
+   engages past max-height. This avoids the Windows classic-scrollbar
+   problem where ~17px bars consumed over half of a ~28px cell (issue #2).
+   On macOS the bars were overlay-style and invisible, which is why this
+   shipped unnoticed. */
 textarea.vt-cell-editor {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 10;
     resize: none;
-    overflow: auto;
-    white-space: pre;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    overflow-x: hidden;
+    overflow-y: auto;
+    max-height: 50vh;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.28);
     -webkit-user-select: auto;
     user-select: auto;
 }
@@ -187,6 +212,11 @@ textarea.vt-cell-editor {
 .vt-cell-editing {
     padding: 0;
     overflow: visible;
+    /* Anchor the absolutely-positioned editor overlay to this cell, and
+       lift the editing cell above its siblings so the overlay (which can
+       extend past the cell bounds) is not clipped by later cells. */
+    position: relative;
+    z-index: 5;
 }
 
 .vt-cell-editor {

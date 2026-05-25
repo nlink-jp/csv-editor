@@ -645,9 +645,16 @@ export function VirtualTable({
                 </div>
                 {rowVirtualizer.getVirtualItems().map((v) => {
                     const tableRow = table.getRowModel().rows[v.index];
+                    // Each .vt-row carries a transform, which makes it its own
+                    // stacking context — so the editor cell's z-index can't lift
+                    // it above sibling rows. When this row holds the active
+                    // editor, raise the whole row so the auto-grown editor
+                    // overlays the rows below instead of being painted over by
+                    // their (transparent-background) cell text. See issue #2.
+                    const rowEditing = editing != null && editing.rowIndex === v.index;
                     return (
                         <div
-                            className="vt-row"
+                            className={'vt-row' + (rowEditing ? ' vt-row-editing' : '')}
                             key={v.key}
                             style={{
                                 transform: `translateY(${HEAD_HEIGHT + v.start}px)`,

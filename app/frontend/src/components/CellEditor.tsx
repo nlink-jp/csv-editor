@@ -1,6 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 export type CommitDirection = 'none' | 'up' | 'down' | 'left' | 'right';
+
+// Narrow columns still get a usable editor. The editor is absolutely
+// positioned (see App.css), so widening past the column overlays the
+// neighbouring cells rather than reflowing the table.
+const MIN_EDITOR_WIDTH = 160;
 
 interface CellEditorProps {
     initialValue: string;
@@ -40,12 +45,30 @@ export function CellEditor({
     const compositionEndAtRef = useRef(0);
     const settledRef = useRef(false);
 
+    const editorWidth = Math.max(width, MIN_EDITOR_WIDTH);
+
     useEffect(() => {
         const el = inputRef.current;
         if (!el) return;
         el.focus();
         el.select();
     }, []);
+
+    // Auto-grow the textarea to fit its content so neither a horizontal
+    // nor a vertical scrollbar is needed in the common case. This matters
+    // most on Windows, where classic (non-overlay) scrollbars consume
+    // ~17px each — over half of a ~28px-tall cell editor, hiding the text
+    // being edited (issue #2). With CSS white-space: pre-wrap the content
+    // wraps instead of overflowing horizontally, and here we match the
+    // height to the wrapped content. The editor is absolutely positioned
+    // (App.css) so growing it overlays neighbouring cells rather than
+    // reflowing the table. Runs after every value change.
+    useLayoutEffect(() => {
+        const el = inputRef.current;
+        if (!el) return;
+        el.style.height = 'auto';
+        el.style.height = `${el.scrollHeight}px`;
+    }, [value, editorWidth]);
 
     const commit = (direction: CommitDirection) => {
         if (settledRef.current) return;
@@ -72,7 +95,7 @@ export function CellEditor({
             ref={inputRef}
             value={value}
             className="vt-cell-editor"
-            style={{ width, height }}
+            style={{ width: editorWidth, minHeight: height }}
             rows={1}
             spellCheck={false}
             onChange={(e) => setValue(e.target.value)}
