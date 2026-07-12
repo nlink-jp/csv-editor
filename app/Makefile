@@ -15,6 +15,17 @@ ENTITLEMENTS      ?= ../scripts/entitlements.plist
 CODESIGN_SCRIPT := ../scripts/codesign-darwin-app.sh
 NOTARIZE_SCRIPT := ../scripts/notarize-darwin-app.sh
 
+# Homebrew tap generation (see ../scripts/release-brew.mk). After `make package`,
+# `make brew` generates this cask from the built darwin-arm64 zip into the local
+# nlink-jp/homebrew-tap checkout. The zip is named after $(APP), not a $(BINARY).
+BREW_KIND      := cask
+BREW_DESC      := Viewer and editor for CSV and TSV files
+BREW_NAME      := $(APP)
+BREW_APP       := $(APP).app
+BREW_BUNDLE_ID := com.wails.csv-editor
+GEN_BREW       := ../scripts/gen-brew.sh
+include ../scripts/release-brew.mk
+
 .PHONY: build build-darwin-arm64 build-windows-amd64 \
         build-all package dev test clean
 
