@@ -5,7 +5,15 @@ All notable changes to **csv-editor** are recorded in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project adheres to [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.2.0] - 2026-07-12
+
+### Removed
+
+- **darwin/amd64 (Intel) pre-built app.** macOS releases now ship **arm64
+  only**, per the org-wide policy (darwin is Apple-Silicon only; no universal
+  builds). Intel Macs can build from source. Windows is unaffected.
+
+No change to the app's behaviour — a packaging / build-config release.
 
 ## [0.1.6] - 2026-05-26
 
