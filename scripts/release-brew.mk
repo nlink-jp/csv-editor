@@ -33,7 +33,7 @@ BREW_ZIP     ?= $(DIST_DIR)/$(BREW_NAME)-$(VERSION)-darwin-arm64.zip
 
 BREW_ENV = BREW_KIND="$(BREW_KIND)" BREW_DESC="$(BREW_DESC)" \
            BREW_APP="$(BREW_APP)" BREW_BUNDLE_ID="$(BREW_BUNDLE_ID)" \
-           BREW_TAP_DIR="$(BREW_TAP_DIR)"
+           BREW_REPO="$(BREW_REPO)" BREW_TAP_DIR="$(BREW_TAP_DIR)"
 
 .PHONY: brew brew-print
 

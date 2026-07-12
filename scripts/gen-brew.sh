@@ -22,6 +22,9 @@
 #   BREW_TAP_DIR    local homebrew-tap checkout                (required unless --print)
 #   BREW_APP        <Name>.app                                 (cask only)
 #   BREW_BUNDLE_ID  bundle id for the zap stanza               (cask only)
+#   BREW_REPO       GitHub repo slug, if it differs from the tool/binary name
+#                   parsed from the asset (e.g. repo markdown-viewer ships mdv);
+#                   default: the parsed name.
 #   BREW_TEMPLATES_DIR  dir holding formula.rb.tmpl/cask.rb.tmpl
 #                       (default: this script's directory)
 #
@@ -79,6 +82,10 @@ case "$STEM" in
 esac
 [ -n "$NAME" ] && [ -n "$VERSION" ] || die "failed to parse name/version from '$BASE'"
 
+# GitHub repo slug — defaults to the tool name, overridable when they differ
+# (e.g. the markdown-viewer repo ships a binary/asset named mdv).
+REPO="${BREW_REPO:-$NAME}"
+
 # Formula class name: kebab -> UpperCamel (matches Homebrew's Formulary.class_s
 # for our lowercase-kebab tool names).
 CLASS=$(printf '%s\n' "$NAME" | awk -F- '{s="";for(i=1;i<=NF;i++){s=s toupper(substr($i,1,1)) substr($i,2)} print s}')
@@ -112,6 +119,7 @@ render() {
   sed \
     -e "s|@CLASS@|$(esc_repl "$CLASS")|g" \
     -e "s|@NAME@|$(esc_repl "$NAME")|g" \
+    -e "s|@REPO@|$(esc_repl "$REPO")|g" \
     -e "s|@DESC@|$(esc_repl "$DESC")|g" \
     -e "s|@VERSION@|$(esc_repl "$VERSION")|g" \
     -e "s|@SHA256@|$(esc_repl "$SHA256")|g" \
