@@ -15,7 +15,7 @@ ENTITLEMENTS      ?= ../scripts/entitlements.plist
 CODESIGN_SCRIPT := ../scripts/codesign-darwin-app.sh
 NOTARIZE_SCRIPT := ../scripts/notarize-darwin-app.sh
 
-.PHONY: build build-darwin-arm64 build-darwin-amd64 build-windows-amd64 \
+.PHONY: build build-darwin-arm64 build-windows-amd64 \
         build-all package dev test clean
 
 ## build: host-platform build + sign + dist copy.
@@ -52,15 +52,6 @@ build-darwin-arm64:
 	rm -rf dist/$(APP)-darwin-arm64.app
 	ditto build/bin/$(APP).app dist/$(APP)-darwin-arm64.app
 
-## build-darwin-amd64: cross-build for Intel macOS, sign, stash in dist/.
-build-darwin-amd64:
-	rm -rf build/bin
-	wails build -ldflags "$(LDFLAGS)" -platform darwin/amd64
-	$(CODESIGN_SCRIPT) build/bin/$(APP).app "$(CODESIGN_IDENTITY)" "$(ENTITLEMENTS)"
-	mkdir -p dist
-	rm -rf dist/$(APP)-darwin-amd64.app
-	ditto build/bin/$(APP).app dist/$(APP)-darwin-amd64.app
-
 ## build-windows-amd64: cross-build .exe for Windows x86_64. Unsigned —
 ## Authenticode signing for Windows is not yet in place.
 build-windows-amd64:
@@ -69,10 +60,9 @@ build-windows-amd64:
 	mkdir -p dist
 	cp build/bin/$(APP).exe dist/$(APP)-windows-amd64.exe
 
-## build-all: produce all three release-platform artifacts back-to-back.
-## Each output lands in dist/ with an arch suffix so arm64 and amd64
-## can coexist before packaging.
-build-all: build-darwin-arm64 build-darwin-amd64 build-windows-amd64
+## build-all: produce both release-platform artifacts back-to-back.
+## Each output lands in dist/ with an arch suffix.
+build-all: build-darwin-arm64 build-windows-amd64
 
 ## package: notarize each darwin .app (in-place stapling) then zip
 ## all three artifacts with arch-suffixed names matching the GitHub
@@ -82,8 +72,7 @@ build-all: build-darwin-arm64 build-darwin-amd64 build-windows-amd64
 ## consistent regardless of arch.
 package: build-all
 	$(NOTARIZE_SCRIPT) dist/$(APP)-darwin-arm64.app "$(NOTARY_PROFILE)"
-	$(NOTARIZE_SCRIPT) dist/$(APP)-darwin-amd64.app "$(NOTARY_PROFILE)"
-	@cd dist && for arch in arm64 amd64; do \
+	@cd dist && for arch in arm64; do \
 		rm -rf _stage && mkdir _stage && \
 		ditto $(APP)-darwin-$$arch.app _stage/$(APP).app && \
 		(cd _stage && /usr/bin/ditto -c -k --keepParent $(APP).app ../$(APP)-$(VERSION)-darwin-$$arch.zip) && \

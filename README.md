@@ -95,8 +95,8 @@ Calc.
 
 ## Requirements
 
-- **macOS 12+** (Apple Silicon recommended; Intel may work but is not
-  prioritized — see [RFP](docs/en/csv-editor-rfp.md) §7)
+- **macOS 12+, Apple Silicon (arm64)** — pre-built binaries are arm64-only;
+  Intel Macs can build from source (see [RFP](docs/en/csv-editor-rfp.md) §7)
 - **Windows 11** (Edge WebView2 ships with the OS; Windows 10 not supported)
 - **Maximum file size: 500 MB** (Open / drag-drop / Open Recent refuse
   larger files with a clear error instead of loading them into memory).

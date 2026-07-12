@@ -87,7 +87,7 @@ csv-editor は **表計算ソフトではない**。以下は実装しない:
 
 ## 要件
 
-- **macOS 12 以降** (Apple Silicon 推奨。Intel は動くが優先対象外)
+- **macOS 12 以降 / Apple Silicon (arm64)** — 配布ビルド済みバイナリは arm64 のみ（Intel はソースからビルド）
 - **Windows 11** (Edge WebView2 同梱。Windows 10 は対象外)
 - **最大ファイルサイズ: 500 MB** (Open / D&D / 最近使ったファイル のいずれも
   500MB を超えるファイルは「too large」エラーで拒否し、メモリに読み込まない)
