@@ -65,11 +65,13 @@ build-windows-amd64:
 build-all: build-darwin-arm64 build-windows-amd64
 
 ## package: notarize each darwin .app (in-place stapling) then zip
-## all three artifacts with arch-suffixed names matching the GitHub
-## release convention (csv-editor-vX.Y.Z-<platform>-<arch>.zip). The
-## bundle / binary is renamed to its canonical name ($(APP).app /
-## $(APP).exe) inside each zip so the user-visible name stays
-## consistent regardless of arch.
+## all release artifacts with version+arch-suffixed names matching the
+## org Release Archive Standard (csv-editor-vX.Y.Z-<platform>-<arch>.zip,
+## see nlink-jp/.github CONVENTIONS.md). The bundle / binary is renamed
+## to its canonical name ($(APP).app / $(APP).exe) inside each zip so the
+## user-visible name stays consistent regardless of arch. The darwin
+## archive ships the self-contained .app; the Windows archive bundles the
+## canonical .exe alongside README.md + LICENSE per the standard.
 package: build-all
 	$(NOTARIZE_SCRIPT) dist/$(APP)-darwin-arm64.app "$(NOTARY_PROFILE)"
 	@cd dist && for arch in arm64; do \
@@ -80,7 +82,8 @@ package: build-all
 	done
 	@cd dist && rm -rf _stage && mkdir _stage && \
 		cp $(APP)-windows-amd64.exe _stage/$(APP).exe && \
-		(cd _stage && zip ../$(APP)-$(VERSION)-windows-amd64.zip $(APP).exe) && \
+		cp ../../README.md ../../LICENSE _stage/ && \
+		(cd _stage && zip -q ../$(APP)-$(VERSION)-windows-amd64.zip $(APP).exe README.md LICENSE) && \
 		rm -rf _stage
 	@ls -la dist/*.zip
 

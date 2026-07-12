@@ -5,6 +5,20 @@ All notable changes to **csv-editor** are recorded in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.2.1] - 2026-07-12
+
+### Fixed
+
+- **Windows release archive now bundles `README.md` + `LICENSE`.** The
+  `csv-editor-vX.Y.Z-windows-amd64.zip` previously contained only
+  `csv-editor.exe`; it now ships the canonical `.exe` alongside `README.md`
+  and `LICENSE`, per the org Release Archive Standard (nlink-jp/.github
+  CONVENTIONS.md). The darwin archive is unchanged — it ships the
+  self-contained, notarized `.app`. Caught by a post-rollout audit that
+  extracted every published release archive and checked its contents.
+
+No change to the app's behaviour — a packaging / build-config release.
+
 ## [0.2.0] - 2026-07-12
 
 ### Removed
